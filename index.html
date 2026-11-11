@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador: Evolução de Obra x INCC</title>
+<meta name="description" content="Compare financiar na planta (evolução de obra) x financiar nas chaves (saldo corrigido pelo INCC).">
+<meta name="theme-color" content="#0f2238">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Obra x INCC">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8;--card:#fff;--ink:#16202c;--muted:#5d6b7a;--line:#e3e7ec;
+  --a:#1f6feb;--a-soft:#e7f0ff;--b:#d9822b;--b-soft:#fdf1e4;--ok:#1a7f4b;--ok-soft:#e5f5ec;
+  --radius:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+header{background:#0f2238;color:#fff;padding:22px 24px}
+header .in{max-width:1440px;margin:0 auto}
+header h1{margin:0 0 4px;font-size:clamp(18px,2.2vw,24px);font-weight:700;line-height:1.25}
+header p{margin:0;color:#b8c6d6;font-size:13.5px;max-width:900px}
+.wrap{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:20px;padding:20px 24px;max-width:1440px;margin:0 auto}
+main{min-width:0}
+@media(min-width:1001px){aside{position:sticky;top:16px;align-self:start;max-height:calc(100vh - 32px);overflow:auto;padding-right:4px}}
+@media(max-width:1000px){.wrap{grid-template-columns:1fr;padding:14px;gap:14px}aside{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}aside .card{margin-bottom:0}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+aside .card{margin-bottom:14px}
+h2{font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 4px;font-weight:500}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;color:var(--ink);background:#fff}
+input:focus,select:focus{outline:2px solid var(--a-soft);border-color:var(--a)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row2>div{display:flex;flex-direction:column;justify-content:flex-end}
+.hint{font-size:11.5px;color:var(--muted);margin-top:3px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{border-radius:var(--radius);padding:14px;border:1px solid var(--line);background:#fff}
+.kpi .t{font-size:12px;color:var(--muted);font-weight:500}
+.kpi .v{font-size:21px;font-weight:700;margin-top:4px}
+.kpi .s{font-size:11.5px;color:var(--muted);margin-top:3px}
+.kpi.a{border-left:4px solid var(--a)} .kpi.b{border-left:4px solid var(--b)}
+.verdict{border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;font-size:14.5px}
+.verdict.win-a{background:var(--a-soft);border:1px solid #bcd3fb}
+.verdict.win-b{background:var(--b-soft);border:1px solid #f3cf9f}
+.verdict strong{font-weight:700}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:700px){.compare{grid-template-columns:1fr}}
+.compare table{width:100%;border-collapse:collapse;font-size:13px}
+.compare td{padding:6px 0;border-bottom:1px solid var(--line)}
+.compare td:last-child{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.compare h3{margin:0 0 8px;font-size:14.5px}
+.tagA{color:var(--a)} .tagB{color:var(--b)}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:1100px){.charts{grid-template-columns:1fr}}
+.chartbox{position:relative;height:300px}
+.tablewrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:8px}
+table.data{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+table.data th{position:sticky;top:0;background:#f0f3f6;font-weight:600;text-align:right;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.data td{padding:6px 8px;text-align:right;border-bottom:1px solid #f0f2f5;white-space:nowrap}
+table.data th:first-child,table.data td:first-child,table.data th:nth-child(2),table.data td:nth-child(2){text-align:left}
+table.data tr.delay td{background:#fff6f6}
+.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap}
+button{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:500}
+button.primary{background:var(--a);color:#fff;border-color:var(--a)}
+button:hover{filter:brightness(.97)}
+.notes{font-size:12.5px;color:var(--muted)}
+.notes li{margin-bottom:5px}
+.ref{font-size:12px;background:#f7f9fb;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin-top:10px;color:var(--muted)}
+table.data th:first-child,table.data td:first-child{position:sticky;left:0;background:#fff;z-index:1}
+table.data th:first-child{background:#f0f3f6;z-index:2}
+table.data tr.delay td:first-child{background:#fff6f6}
+.mobile-jump{display:none}
+@media(max-width:640px){
+  body{font-size:14.5px}
+  header{padding:16px 14px}
+  header p{font-size:13px}
+  .wrap{padding:10px;gap:12px}
+  .card{padding:14px}
+  input,select{font-size:16px;padding:10px 11px}
+  .row2{gap:8px}
+  .kpis{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .kpi{padding:11px}
+  .kpi .v{font-size:17px}
+  .kpi .t{font-size:11.5px}
+  .verdict{font-size:13.5px;padding:12px}
+  .compare{gap:12px;margin-bottom:12px}
+  .compare td{font-size:12.5px}
+  .compare td:first-child{padding-right:8px}
+  .charts{gap:12px;margin-bottom:12px}
+  .chartbox{height:250px}
+  .toolbar{flex-direction:column;align-items:stretch}
+  .toolbar>div{flex-direction:column}
+  button{width:100%;padding:11px 12px}
+  .tablewrap{max-height:420px}
+  table.data{font-size:12px}
+  .mobile-jump{display:block;position:fixed;right:12px;bottom:14px;z-index:5;background:var(--a);color:#fff;border:none;border-radius:999px;padding:11px 16px;width:auto;box-shadow:0 4px 14px rgba(15,34,56,.25);font-weight:600}
+}
+@media(max-width:360px){.kpis{grid-template-columns:1fr}.row2{grid-template-columns:1fr}}
+.tabs{background:#0f2238;padding:0 24px;border-top:1px solid #1f3552}
+.tabs .in{max-width:1440px;margin:0 auto;display:flex;gap:4px}
+.tabs button{background:transparent;border:none;border-bottom:3px solid transparent;color:#b8c6d6;border-radius:0;padding:11px 14px;font-weight:600;width:auto}
+.tabs button.on{color:#fff;border-bottom-color:#8fb8ff}
+.cliwrap{display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);gap:20px;padding:20px 24px;max-width:1100px;margin:0 auto;align-items:start}
+@media(max-width:800px){.cliwrap{grid-template-columns:1fr;padding:10px;gap:12px}.tabs{padding:0 10px}}
+.clipreview{display:flex;justify-content:center;background:#e9edf2}
+#cliCanvas{width:100%;max-width:540px;height:auto;border-radius:8px;box-shadow:0 6px 24px rgba(15,34,56,.15)}
+.clibtns{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.clibtns button{width:100%}
+body.on-cli .mobile-jump{display:none!important}
+/* ===== Ajustes de UX (mobile + desktop) ===== */
+:root{color-scheme:light}
+button{color:var(--ink);-webkit-tap-highlight-color:transparent;transition:background .15s,border-color .15s}
+button:hover{background:#f3f6fa}
+button.primary:hover{background:#1a62d4}
+button:disabled{opacity:.5;cursor:default}
+.tabs{position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(15,34,56,.18)}
+.tabs button,.tabs button:hover{background:transparent}
+.tabs button:hover{color:#fff}
+@media(min-width:801px){
+  .cliwrap{grid-template-columns:340px minmax(0,1fr)}
+  .cliwrap>.card:first-child{position:sticky;top:64px}
+  .clipreview{position:sticky;top:64px;padding:16px}
+  #cliCanvas{width:auto;height:auto;max-width:100%;max-height:calc(100vh - 110px)}
+}
+@media(max-width:800px){
+  .cliwrap{display:flex;flex-direction:column;padding:10px 10px 96px}
+  .clipreview{order:-1;padding:10px}
+  #cliCanvas{max-width:100%;width:100%}
+  .clibtns{position:fixed;left:0;right:0;bottom:0;z-index:9;flex-direction:row;margin:0;padding:10px 12px 14px;background:#fff;border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(15,34,56,.10)}
+  .clibtns button{flex:1;padding:12px 8px;font-weight:600}
+  #btnCopyImg{display:none}
+  .cli-desk{display:none}
+}
+@media(max-width:640px){
+  header{padding:12px 14px}
+  header h1{font-size:17px;margin:0}
+  header p{display:none}
+  .tabs{padding:0}
+  .tabs .in{gap:0}
+  .tabs button{flex:1;padding:13px 6px;font-size:14px;width:auto}
+  .tabs .lg{display:none}
+}
+#toast{z-index:20}
+.mobile-jump:hover{background:var(--a)}
+.savebox{display:flex;flex-direction:column;gap:8px;padding:2px 2px 10px}
+.savebox button{width:100%}
+#btnReset.confirm{border-color:#d9622b;color:#b44f1f;background:#fdf1e4}
+@media(max-width:1000px){.savebox{grid-column:1/-1}}
+@media(max-width:800px){.cliwrap{align-items:stretch}.clibtns .lg{display:none}.clibtns button{white-space:nowrap}}
+@media(min-width:1001px){aside{top:60px;max-height:calc(100vh - 76px)}}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0f2238;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1>Simulador de Evolução de Obra x INCC — São Paulo</h1>
+  <p>Compare os dois caminhos de quem compra na planta: <b class="tagA" style="color:#8fb8ff">A) assinar o financiamento na planta</b> e pagar os juros de evolução de obra ao banco, ou <b style="color:#f5b874">B) financiar só na entrega das chaves</b> e ter o saldo corrigido pelo INCC até lá.</p>
+</div></header>
+<nav class="tabs"><div class="in">
+  <button data-tab="simulador" class="on">Simulador</button>
+  <button data-tab="cliente">Para o cliente<span class="lg"> (WhatsApp)</span></button>
+</div></nav>
+
+<section id="tab-sim">
+<div class="wrap">
+<aside>
+  <div class="card">
+    <h2>Imóvel e financiamento</h2>
+    <label>Valor do imóvel (R$)</label>
+    <input id="valorImovel" type="text" inputmode="decimal" value="450.000,00">
+    <label>Valor que será financiado pelo banco (R$)</label>
+    <input id="valorFin" type="text" inputmode="decimal" value="315.000,00">
+    <div class="hint">Saldo que vai para o banco (no cenário B, é o saldo que fica com a construtora até as chaves).</div>
+    <div class="row2">
+      <div><label>Juros efetivos (% a.a.)</label><input id="jurosAA" type="text" inputmode="decimal" value="11,19"></div>
+      <div><label>TR (% a.m.)</label><input id="tr" type="text" inputmode="decimal" value="0,17"></div>
+    </div>
+    <div class="row2">
+      <div><label>Seguros MIP+DFI (R$/mês)</label><input id="seguros" type="text" inputmode="decimal" value="95,00"></div>
+      <div><label>Tarifa adm. (R$/mês)</label><input id="tarifa" type="text" inputmode="decimal" value="25,00"></div>
+    </div>
+    <div class="row2">
+      <div><label>Prazo do financiamento (meses)</label><input id="prazoFin" type="number" min="12" max="420" value="420"></div>
+      <div><label>Sistema</label><select id="sistema"><option value="SAC">SAC</option><option value="PRICE">PRICE</option></select></div>
+    </div>
+    <div class="hint">Use a taxa, TR e seguros do seu contrato ou da simulação do banco.</div>
+  </div>
+
+  <div class="card">
+    <h2>Obra</h2>
+    <div class="row2">
+      <div><label>Início da simulação</label><input id="inicio" type="month" value="2026-11"></div>
+      <div><label>Meses até a entrega</label><input id="prazoObra" type="number" min="1" max="72" value="30"></div>
+    </div>
+    <div class="row2">
+      <div><label>% da obra já executada</label><input id="obraAtual" type="text" inputmode="decimal" value="15"></div>
+      <div><label>Meses de atraso</label><input id="atraso" type="number" min="0" max="36" value="0"></div>
+    </div>
+    <label>Ritmo da obra</label>
+    <select id="curva">
+      <option value="s">Curva S (lenta → rápida → lenta) — mais comum</option>
+      <option value="linear">Linear (mesmo % todo mês)</option>
+      <option value="front">Acelerada no início</option>
+      <option value="back">Concentrada no fim</option>
+    </select>
+    <div class="hint">No atraso, o banco já liberou 100% e o encargo continua cheio (a cobrança após o prazo é contestada na Justiça).</div>
+  </div>
+
+  <div class="card">
+    <h2>INCC</h2>
+    <label>Como projetar o INCC</label>
+    <select id="inccModo">
+      <option value="fixo">Taxa anual projetada</option>
+      <option value="hist">Repetir os últimos 12 meses reais (INCC-M)</option>
+    </select>
+    <div id="boxFixo">
+      <label>INCC projetado (% a.a.)</label>
+      <input id="inccAA" type="text" inputmode="decimal" value="6,84">
+    </div>
+    <div class="ref">
+      <b>Referências (FGV IBRE):</b><br>
+      INCC-M São Paulo, 12 meses até jun/26: <b>6,84%</b><br>
+      INCC-M nacional, 12 meses até set/26: <b>6,61%</b><br>
+      Últimos 12 meses usados no modo histórico (nov/25–out/26): 0,28 · 0,21 · 0,63 · 0,34 · 0,36 · 1,04 · 0,77 · 0,85 · 0,62 · 0,85 · 0,25 · 0,35 (%).
+    </div>
+  </div>
+  <div class="savebox">
+    <div class="hint" id="saveInfo">Os dados ficam salvos neste aparelho e voltam quando você abrir o app de novo.</div>
+    <button id="btnReset">Restaurar valores padrão</button>
+  </div>
+</aside>
+
+<main>
+  <div id="verdict" class="verdict"></div>
+
+  <div class="kpis">
+    <div class="kpi a"><div class="t">A · Total pago em evolução de obra</div><div class="v" id="kA">–</div><div class="s" id="kA2"></div></div>
+    <div class="kpi b"><div class="t">B · Acréscimo do INCC no saldo</div><div class="v" id="kB">–</div><div class="s" id="kB2"></div></div>
+    <div class="kpi"><div class="t">Diferença durante a obra</div><div class="v" id="kD">–</div><div class="s" id="kD2"></div></div>
+    <div class="kpi"><div class="t">Maior parcela de evolução de obra</div><div class="v" id="kM">–</div><div class="s" id="kM2"></div></div>
+  </div>
+
+  <div class="compare">
+    <div class="card">
+      <h3 class="tagA">A · Financiar na planta</h3>
+      <table>
+        <tr><td>Juros de obra (taxa do contrato)</td><td id="aJ"></td></tr>
+        <tr><td>Atualização pela TR</td><td id="aT"></td></tr>
+        <tr><td>Seguros + tarifa</td><td id="aS"></td></tr>
+        <tr><td><b>Total desembolsado na obra</b></td><td id="aTot"></td></tr>
+        <tr><td>Saldo devedor na entrega</td><td id="aSaldo"></td></tr>
+        <tr><td>1ª parcela após as chaves (sem seguros)</td><td id="aP1"></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 class="tagB">B · Financiar nas chaves (saldo + INCC)</h3>
+      <table>
+        <tr><td>INCC acumulado no período</td><td id="bPct"></td></tr>
+        <tr><td>Acréscimo no saldo</td><td id="bAc"></td></tr>
+        <tr><td>Saldo a financiar na entrega</td><td id="bSaldo"></td></tr>
+        <tr><td>1ª parcela após as chaves (sem seguros)</td><td id="bP1"></td></tr>
+        <tr><td>Parcela a mais vs. cenário A</td><td id="bPd"></td></tr>
+        <tr><td><b>Custo total do acréscimo no financiamento</b></td><td id="bLife"></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="card"><h2>Mês a mês</h2><div class="chartbox"><canvas id="c1"></canvas></div></div>
+    <div class="card"><h2>Acumulado</h2><div class="chartbox"><canvas id="c2"></canvas></div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="toolbar">
+      <h2 style="margin:0">Tabela de evolução</h2>
+      <div style="display:flex;gap:8px">
+        <button id="copyTable">Copiar tabela (cola no Excel)</button>
+        <button id="copyResumo" class="primary">Copiar resumo para o cliente</button>
+      </div>
+    </div>
+    <div class="tablewrap"><table class="data" id="tbl"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Como o cálculo funciona</h2>
+    <ul class="notes">
+      <li><b>Cenário A:</b> o banco libera o dinheiro para a construtora conforme o % de obra medido. Todo mês você paga juros (taxa efetiva convertida para mensal) + TR sobre o valor já liberado, mais seguros e tarifa. Esse encargo não abate o saldo devedor; a amortização começa depois do habite-se.</li>
+      <li><b>Cenário B:</b> você financia só na entrega, e até lá o saldo que está com a construtora é corrigido mês a mês pelo INCC. Você não paga nada a mais durante a obra, mas a dívida que vai para o banco fica maior, e esse acréscimo é pago com juros ao longo de todo o financiamento.</li>
+      <li>As parcelas de entrada pagas direto à construtora também são corrigidas pelo INCC nos dois cenários, por isso ficam fora da comparação.</li>
+      <li>"Custo total do acréscimo" = tudo o que se paga ao banco (principal + juros) só por causa do acréscimo do INCC, sem TR nem seguros nas parcelas depois das chaves.</li>
+      <li>É uma estimativa. Os valores reais dependem das medições da obra, das taxas do contrato e dos índices publicados. Confira com a simulação oficial do banco.</li>
+    </ul>
+  </div>
+</main>
+</div>
+</section>
+
+<section id="tab-cli" hidden>
+<div class="cliwrap">
+  <div class="card">
+    <h2>Comparação para o cliente</h2>
+    <div class="hint" style="margin-top:0">Os valores vêm da aba Simulador. Mude os dados lá e a imagem se atualiza sozinha.</div>
+    <label>Nome do cliente (opcional)</label>
+    <input id="cliNome" type="text" placeholder="Ex.: Mariana">
+    <label>Empreendimento (opcional)</label>
+    <input id="cliEmp" type="text" placeholder="Ex.: Residencial Jardins">
+    <label>Corretor e contato (opcional)</label>
+    <input id="cliCor" type="text" placeholder="Ex.: Lucas Grifante · (11) 9 0000-0000">
+    <div class="clibtns">
+      <button id="btnPng" class="primary" disabled>Baixar imagem<span class="lg"> (PNG)</span></button>
+      <button id="btnCopyImg">Copiar imagem</button>
+      <button id="btnWpp">Copiar texto<span class="lg"> para WhatsApp</span></button>
+    </div>
+    <div class="hint cli-desk" style="margin-top:10px">No computador, use "Copiar imagem" e cole direto no WhatsApp Web. No celular, toque em "Enviar imagem" e escolha o WhatsApp.</div>
+  </div>
+  <div class="card clipreview"><canvas id="cliCanvas" width="1080" height="1580"></canvas></div>
+</div>
+</section>
+
+<button class="mobile-jump" id="jump">Ver resultado ↓</button>
+<div id="toast"></div>
+
+<script>
+const HIST = [0.28,0.21,0.63,0.34,0.36,1.04,0.77,0.85,0.62,0.85,0.25,0.35]; // INCC-M nov/25 a out/26 (%)
+const $ = id => document.getElementById(id);
+const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const brl0 = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const pct = v => (v*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
+const num = id => { const s=String($(id).value).trim().replace(/R\$\s?/,'').replace(/\./g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?0:n; };
+const int = id => Math.max(0, parseInt($(id).value)||0);
+const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function curva(x,tipo){
+  x=Math.min(1,Math.max(0,x));
+  if(tipo==='linear') return x;
+  if(tipo==='front') return 1-(1-x)*(1-x);
+  if(tipo==='back') return x*x;
+  return x*x*(3-2*x);
+}
+function parcelaInicial(P,i,n,sis){
+  if(P<=0) return 0;
+  if(sis==='PRICE') return P*i/(1-Math.pow(1+i,-n));
+  return P/n + P*i;
+}
+function totalPago(P,i,n,sis){
+  if(P<=0) return 0;
+  if(sis==='PRICE') return parcelaInicial(P,i,n,sis)*n;
+  return P + P*i*(n+1)/2;
+}
+
+let ch1, ch2, lastRows=[], lastRes={};
+
+function calc(){
+  $('boxFixo').style.display = $('inccModo').value==='fixo'?'block':'none';
+  const F=num('valorFin'), ia=num('jurosAA')/100, tr=num('tr')/100, seg=num('seguros'), tar=num('tarifa');
+  const N=Math.max(1,int('prazoObra')), atraso=int('atraso'), p0=Math.min(100,num('obraAtual'))/100;
+  const tipo=$('curva').value, modo=$('inccModo').value, inccAA=num('inccAA')/100;
+  const nFin=Math.max(12,int('prazoFin')), sis=$('sistema').value;
+  const im=Math.pow(1+ia,1/12)-1;
+  const inccM = Math.pow(1+inccAA,1/12)-1;
+  const [y0,m0]=($('inicio').value||'2026-11').split('-').map(Number);
+
+  const rows=[]; let accA=0, saldoB=F, accB=0, totJ=0,totT=0,totS=0, maxP=0, maxMes='';
+  const T=N+atraso;
+  for(let t=1;t<=T;t++){
+    const pIni = t-1<=N ? p0+(1-p0)*curva((t-1)/N,tipo) : 1;
+    const pFim = t<=N ? p0+(1-p0)*curva(t/N,tipo) : 1;
+    const lib = F*pIni;
+    const j = lib*im, trv = lib*tr, s = seg+tar;
+    const parc = j+trv+s;
+    accA+=parc; totJ+=j; totT+=trv; totS+=s;
+    const ir = modo==='hist' ? HIST[(t-1)%12]/100 : inccM;
+    const acr = saldoB*ir; saldoB+=acr; accB+=acr;
+    const mi=(m0-1+t-1); const lbl=MESES[mi%12]+'/'+String(y0+Math.floor(mi/12)).slice(2);
+    if(parc>maxP){maxP=parc;maxMes=lbl;}
+    rows.push({t,lbl,pObra:pFim,lib,j,trv,s,parc,accA,ir,acr,saldoB,accB,delay:t>N});
+  }
+  const fator=saldoB/F;
+  const p1A=parcelaInicial(F,im,nFin,sis), p1B=parcelaInicial(saldoB,im,nFin,sis);
+  const life=totalPago(saldoB-F,im,nFin,sis);
+  lastRows=rows; lastRes={F,accA,accB,saldoB,fator,p1A,p1B,life,T,N,atraso,totJ,totT,totS,maxP,maxMes,sis,nFin};
+
+  $('kA').textContent=brl0(accA); $('kA2').textContent=`em ${T} meses · média ${brl0(accA/T)}/mês`;
+  $('kB').textContent=brl0(accB); $('kB2').textContent=`INCC acumulado de ${pct(fator-1)}`;
+  const d=accB-accA;
+  $('kD').textContent=brl0(Math.abs(d)); $('kD2').textContent= d>0?'a favor de financiar na planta (A)':'a favor de financiar nas chaves (B)';
+  $('kM').textContent=brl0(maxP); $('kM2').textContent='em '+maxMes;
+
+  $('aJ').textContent=brl(totJ); $('aT').textContent=brl(totT); $('aS').textContent=brl(totS);
+  $('aTot').textContent=brl(accA); $('aSaldo').textContent=brl(F); $('aP1').textContent=brl(p1A);
+  $('bPct').textContent=pct(fator-1); $('bAc').textContent=brl(accB); $('bSaldo').textContent=brl(saldoB);
+  $('bP1').textContent=brl(p1B); $('bPd').textContent='+ '+brl(p1B-p1A); $('bLife').textContent=brl(life);
+
+  const v=$('verdict');
+  if(d>0){
+    v.className='verdict win-a';
+    v.innerHTML=`<strong>Financiar na planta sai mais barato neste cenário.</strong> Você paga ${brl0(accA)} de evolução de obra, contra ${brl0(accB)} que o INCC somaria ao saldo, uma economia de ${brl0(d)} só durante a obra. Se o acréscimo do INCC fosse para o financiamento, ele custaria ${brl0(life)} ao longo de ${nFin} meses.`;
+  } else {
+    v.className='verdict win-b';
+    v.innerHTML=`<strong>Financiar nas chaves sai mais barato durante a obra neste cenário.</strong> A evolução de obra custaria ${brl0(accA)}, contra ${brl0(accB)} de INCC no saldo (${brl0(-d)} a menos). Mas atenção: o acréscimo do INCC vira dívida e custa ${brl0(life)} ao longo de ${nFin} meses de financiamento, e a parcela sobe ${brl(p1B-p1A)}.`;
+  }
+
+  // tabela
+  let h='<thead><tr><th>Mês</th><th>Ref.</th><th>% obra</th><th>Saldo liberado</th><th>Juros</th><th>TR</th><th>Seguros+tarifa</th><th>Parcela evolução</th><th>Acum. A</th><th>INCC mês</th><th>Acréscimo INCC</th><th>Saldo corrigido B</th><th>Acum. B</th></tr></thead><tbody>';
+  rows.forEach(r=>{h+=`<tr class="${r.delay?'delay':''}"><td>${r.t}${r.delay?' (atraso)':''}</td><td>${r.lbl}</td><td>${pct(r.pObra)}</td><td>${brl(r.lib)}</td><td>${brl(r.j)}</td><td>${brl(r.trv)}</td><td>${brl(r.s)}</td><td><b>${brl(r.parc)}</b></td><td>${brl(r.accA)}</td><td>${pct(r.ir)}</td><td>${brl(r.acr)}</td><td>${brl(r.saldoB)}</td><td>${brl(r.accB)}</td></tr>`});
+  $('tbl').innerHTML=h+'</tbody>';
+
+  drawCharts(rows);
+  drawCli();
+}
+
+function drawCharts(rows){
+  if(typeof Chart==='undefined') return;
+  const sm=window.innerWidth<640;
+  const labels=rows.map(r=>r.lbl);
+  const mk=(dual)=>{const o={responsive:true,maintainAspectRatio:false,animation:{duration:300},interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:sm?10:12,padding:sm?8:10,font:{size:sm?10.5:11.5}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.dataset.yAxisID==='y2'?pct(c.parsed.y/100):brl(c.parsed.y))}}},
+    scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:sm?5:10,font:{size:sm?10:11}}},
+      y:{ticks:{callback:v=>sm?(v>=1000?'R$ '+(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil':brl0(v)):brl0(v),font:{size:sm?10:11},maxTicksLimit:sm?5:8},grid:{color:'#eef1f4'}}}};
+    if(dual) o.scales.y2={position:'right',min:0,max:100,grid:{display:false},ticks:{callback:v=>v+'%',font:{size:sm?10:11},maxTicksLimit:sm?5:6}};
+    return o;};
+  const o1=mk(true), o2=mk(false);
+  const d1={labels,datasets:[
+    {type:'bar',label:'A · Parcela de evolução de obra',data:rows.map(r=>r.parc),backgroundColor:'#1f6febcc',borderRadius:3,yAxisID:'y'},
+    {type:'bar',label:'B · Acréscimo do INCC no mês',data:rows.map(r=>r.acr),backgroundColor:'#d9822bcc',borderRadius:3,yAxisID:'y'},
+    {type:'line',label:'% da obra',data:rows.map(r=>r.pObra*100),borderColor:'#7a8794',borderDash:[4,3],pointRadius:0,borderWidth:1.5,yAxisID:'y2'}]};
+  const d2={labels,datasets:[
+    {label:'A · Evolução de obra acumulada',data:rows.map(r=>r.accA),borderColor:'#1f6feb',backgroundColor:'#1f6feb',pointRadius:0,borderWidth:2.5,tension:.2},
+    {label:'B · INCC acumulado no saldo',data:rows.map(r=>r.accB),borderColor:'#d9822b',backgroundColor:'#d9822b',pointRadius:0,borderWidth:2.5,tension:.2}]};
+  if(ch1){ch1.data=d1;ch1.update('none');} else ch1=new Chart($('c1'),{data:d1,options:o1});
+  if(ch2){ch2.data=d2;ch2.update('none');} else ch2=new Chart($('c2'),{type:'line',data:d2,options:o2});
+}
+
+$('jump').addEventListener('click',()=>{const v=$('verdict');const r=v.getBoundingClientRect();if(r.top<80&&r.top>-v.offsetHeight){document.querySelector('aside').scrollIntoView({behavior:'smooth'});}else v.scrollIntoView({behavior:'smooth',block:'start'});});
+function syncJump(){const r=$('verdict').getBoundingClientRect();$('jump').textContent=(r.top<window.innerHeight)?'Editar dados ↑':'Ver resultado ↓';}
+window.addEventListener('scroll',syncJump,{passive:true});
+function toast(m){const t=$('toast');t.textContent=m;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1800);}
+async function copy(text,msg){try{await navigator.clipboard.writeText(text);toast(msg);}catch(e){toast('Não foi possível copiar neste navegador');}}
+
+$('copyTable').addEventListener('click',()=>{
+  const f=v=>v.toFixed(2).replace('.',',');
+  let s='Mês\tRef.\t% obra\tSaldo liberado\tJuros\tTR\tSeguros+tarifa\tParcela evolução\tAcum. A\tINCC mês %\tAcréscimo INCC\tSaldo corrigido B\tAcum. B\n';
+  lastRows.forEach(r=>{s+=[r.t,r.lbl,f(r.pObra*100),f(r.lib),f(r.j),f(r.trv),f(r.s),f(r.parc),f(r.accA),f(r.ir*100),f(r.acr),f(r.saldoB),f(r.accB)].join('\t')+'\n'});
+  copy(s,'Tabela copiada');
+});
+$('copyResumo').addEventListener('click',()=>{
+  const r=lastRes;
+  const s=`Simulação: evolução de obra x INCC
+Valor financiado: ${brl(r.F)} · Obra: ${r.N} meses${r.atraso?` + ${r.atraso} de atraso`:''}
+
+A) Financiar na planta
+- Total pago em evolução de obra: ${brl(r.accA)}
+- Maior parcela de evolução: ${brl(r.maxP)} (${r.maxMes})
+- 1ª parcela após as chaves (${r.sis}): ${brl(r.p1A)}
+
+B) Financiar nas chaves (saldo corrigido pelo INCC)
+- INCC acumulado: ${pct(r.fator-1)} → acréscimo de ${brl(r.accB)}
+- Saldo a financiar: ${brl(r.saldoB)}
+- 1ª parcela após as chaves (${r.sis}): ${brl(r.p1B)}
+- Custo total do acréscimo em ${r.nFin} meses: ${brl(r.life)}
+
+Diferença durante a obra: ${brl(Math.abs(r.accB-r.accA))} a favor de ${r.accB>r.accA?'financiar na planta':'financiar nas chaves'}.
+*Estimativa; confira com a simulação oficial do banco.`;
+  copy(s,'Resumo copiado');
+});
+
+// ===== Aba Para o cliente =====
+const FONT='Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+function rrect(c,x0,y0,x1,y1,r){r=Math.min(r,(x1-x0)/2,(y1-y0)/2);c.beginPath();c.moveTo(x0+r,y0);c.arcTo(x1,y0,x1,y1,r);c.arcTo(x1,y1,x0,y1,r);c.arcTo(x0,y1,x0,y0,r);c.arcTo(x0,y0,x1,y0,r);c.closePath();}
+function box(c,x0,y0,x1,y1,r,fill,stroke){rrect(c,x0,y0,x1,y1,r);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=2;c.stroke();}}
+function txt(c,x,y,s,w,size,color,align,base,maxW){let sz=size;c.font=`${w} ${sz}px ${FONT}`;if(maxW){while(c.measureText(s).width>maxW&&sz>10){sz--;c.font=`${w} ${sz}px ${FONT}`;}}c.fillStyle=color;c.textAlign=align||'left';c.textBaseline=base||'top';c.fillText(s,x,y);}
+function marcos(){const n=lastRows.length;if(!n)return[];const out=[];[0,11,23].forEach(i=>{if(i<n-1)out.push(i);});out.push(n-1);return out.map((i,k)=>({i,row:lastRows[i],lab:(k===out.length-1&&out.length>1)?'Última':(i+1)+'ª'}));}
+
+function drawCli(){
+  const cv=$('cliCanvas'); if(!cv||!lastRows.length) return;
+  const r=lastRes;
+  const nome=$('cliNome').value.trim(), emp=$('cliEmp').value.trim(), cor=$('cliCor').value.trim();
+  const NAVY='#14213D',GREEN='#1B8A5A',GREEN_BG='#E6F4EC',ORANGE='#D9622B',ORANGE_BG='#FCEDE4',GRAY='#6B7280',TEXT='#1F2937',LINE='#E5E7EB';
+  const W=1080, py0=880, ry0=1320, H=ry0+170+(cor?64:0)+80;
+  cv.width=W; cv.height=H;
+  const c=cv.getContext('2d');
+  c.fillStyle='#F4F6FA'; c.fillRect(0,0,W,H);
+  // cabeçalho
+  c.fillStyle=NAVY; c.fillRect(0,0,W,230);
+  let kick='SIMULAÇÃO'+(nome?' PARA '+nome.toUpperCase():'')+(emp?' · '+emp.toUpperCase():'');
+  txt(c,60,62,kick,600,22,'#9FB3D9','left','top',960);
+  txt(c,60,96,'Evolução de obra x INCC',700,52,'#fff');
+  const obra=r.N+' meses'+(r.atraso?` + ${r.atraso} de atraso`:'');
+  txt(c,60,172,`Saldo devedor  ${brl(r.F)}   ·   Obra  ${obra}`,500,26,'#D6DEEE','left','top',960);
+  // cartões
+  const cw=(W-150)/2, top=270, bot=850;
+  const cards=[
+    {x:60,tag:'A',l1:'Financiamento',l2:'antecipado',c:GREEN,bg:GREEN_BG,rows:[['Evolução de obra',brl(r.accA)],['Correção INCC','—'],['Saldo a financiar',brl(r.F)]],total:brl(r.F+r.accA)},
+    {x:60+cw+30,tag:'B',l1:'Financiar nas',l2:'chaves',c:ORANGE,bg:ORANGE_BG,rows:[['Evolução de obra','—'],['Correção INCC','+ '+brl(r.accB)],['Saldo a financiar',brl(r.saldoB)]],total:brl(r.saldoB)}];
+  cards.forEach(k=>{
+    box(c,k.x,top,k.x+cw,bot,28,k.c); box(c,k.x,top+10,k.x+cw,bot,28,'#fff');
+    c.fillStyle='#fff'; c.fillRect(k.x,top+30,cw,30);
+    box(c,k.x+32,top+50,k.x+92,top+110,16,k.bg);
+    txt(c,k.x+62,top+81,k.tag,700,34,k.c,'center','middle');
+    txt(c,k.x+110,top+50,k.l1,600,28,TEXT); txt(c,k.x+110,top+84,k.l2,600,28,TEXT);
+    let y=top+150;
+    k.rows.forEach(([lab,val])=>{
+      txt(c,k.x+32,y,lab,500,22,GRAY);
+      txt(c,k.x+32,y+32,val,700,34,val.startsWith('+')?ORANGE:TEXT,'left','top',cw-64);
+      y+=100; c.fillStyle=LINE; c.fillRect(k.x+32,y-19,cw-64,2);
+    });
+    box(c,k.x+20,bot-130,k.x+cw-20,bot-20,20,k.bg);
+    txt(c,k.x+44,bot-112,'CUSTO TOTAL',600,20,k.c);
+    txt(c,k.x+44,bot-80,k.total,700,40,k.c,'left','top',cw-88);
+  });
+  // parcelas
+  box(c,60,py0,W-60,py0+400,28,'#fff',LINE);
+  txt(c,92,py0+34,'Parcelas da evolução de obra',600,28,TEXT);
+  txt(c,92,py0+74,`Opção A  ·  total pago na obra: ${brl(r.accA)}`,500,22,GRAY);
+  const ms=marcos(), base=py0+330, maxh=170, colw=(W-184)/ms.length;
+  const maxv=Math.max(...ms.map(m=>m.row.parc))||1;
+  ms.forEach((m,i)=>{
+    const cx=92+colw*i+colw/2, h=Math.max(14,maxh*m.row.parc/maxv), last=i===ms.length-1;
+    box(c,cx-50,base-h,cx+50,base,12,last?GREEN:'#8CCBAA');
+    txt(c,cx,base-h-14,brl(m.row.parc),700,24,TEXT,'center','alphabetic',colw-8);
+    txt(c,cx,base+18,`${m.lab} · ${m.row.lbl}`,500,20,GRAY,'center','top',colw-8);
+  });
+  c.fillStyle='#D1D5DB'; c.fillRect(92,base-1,W-184,2);
+  // resultado
+  const dif=r.accB-r.accA, aWin=dif>=0;
+  box(c,60,ry0,W-60,ry0+170,28,aWin?GREEN:ORANGE);
+  txt(c,92,ry0+32,aWin?'✓  VANTAGEM DO FINANCIAMENTO ANTECIPADO':'✓  VANTAGEM DE FINANCIAR NAS CHAVES',600,22,'rgba(255,255,255,.78)','left','top',896);
+  txt(c,92,ry0+66,`${brl(Math.abs(dif))} a menos no custo total`,700,38,'#fff','left','top',896);
+  txt(c,92,ry0+120,aWin?`e ${brl(r.accB)} a menos financiados no banco`:`mas financia ${brl(r.accB)} a mais no banco`,500,26,'rgba(255,255,255,.9)','left','top',896);
+  if(cor) txt(c,W/2,ry0+204,cor,600,24,TEXT,'center','top',960);
+  txt(c,W/2,H-38,'Valores simulados. Não consideram os juros do financiamento bancário após as chaves.',400,19,GRAY,'center','middle',960);
+}
+
+function cliBlob(){return new Promise(res=>$('cliCanvas').toBlob(res,'image/png'));}
+function slug(s){return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+const IS_TOUCH=window.matchMedia&&matchMedia('(pointer:coarse)').matches;
+function canShareFile(f){try{return !!(navigator.canShare&&navigator.canShare({files:[f]}));}catch(e){return false;}}
+(()=>{const b=$('btnPng');b.disabled=false;
+  if(IS_TOUCH&&canShareFile(new File([new Blob(['x'])],'t.png',{type:'image/png'}))) b.innerHTML='Enviar imagem<span class="lg"> (WhatsApp, salvar…)</span>';})();
+$('btnPng').addEventListener('click',async()=>{
+  drawCli();
+  const blob=await cliBlob(); const nome=$('cliNome').value.trim();
+  const name=`simulacao-obra-incc${nome?'-'+slug(nome):''}.png`;
+  const file=new File([blob],name,{type:'image/png'});
+  if(IS_TOUCH&&canShareFile(file)){
+    try{await navigator.share({files:[file],title:'Simulação: evolução de obra x INCC'});return;}
+    catch(e){if(e&&e.name==='AbortError')return;}
+  }
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000); toast('Imagem baixada');
+});
+$('btnCopyImg').addEventListener('click',async()=>{
+  drawCli();
+  try{await navigator.clipboard.write([new ClipboardItem({'image/png':cliBlob()})]);toast('Imagem copiada. Cole no WhatsApp Web');}
+  catch(e){toast('Este navegador não deixa copiar imagem. Use Baixar imagem');}
+});
+$('btnWpp').addEventListener('click',()=>{
+  const r=lastRes, nome=$('cliNome').value.trim(), emp=$('cliEmp').value.trim(), cor=$('cliCor').value.trim();
+  const n0=v=>Math.round(v).toLocaleString('pt-BR');
+  const pad=(s,n)=>s+' '.repeat(Math.max(1,n-s.length));
+  const dif=r.accB-r.accA;
+  const tb='```\n'+pad('',12)+pad('ANTECIP.',11)+'CHAVES\n'+pad('Evolução',12)+pad(n0(r.accA),11)+'—\n'+pad('INCC',12)+pad('—',11)+n0(r.accB)+'\n'+pad('A financiar',12)+pad(n0(r.F),11)+n0(r.saldoB)+'\n'+'-'.repeat(30)+'\n'+pad('TOTAL',12)+pad(n0(r.F+r.accA),11)+n0(r.saldoB)+'\n```';
+  const parc=marcos().map(m=>`  ↳ ${m.lab==='Última'?'Última':m.lab+' parcela'}: ${brl(m.row.parc)} (${m.row.lbl})`).join('\n');
+  let s='';
+  if(nome) s+=`Olá, ${nome}! Segue a comparação que conversamos:\n\n`;
+  s+=`*📊 Simulação: Evolução de Obra x INCC*${emp?'\n'+emp:''}\nSaldo devedor: *${brl(r.F)}* · Obra: *${r.N} meses${r.atraso?' + '+r.atraso+' de atraso':''}*\n\n${tb}\n\n`;
+  s+=`*🅰️ Financiamento antecipado*\n• Evolução de obra: ${brl(r.accA)} no total\n${parc}\n• Saldo a financiar: *${brl(r.F)}* (sem INCC)\n\n`;
+  s+=`*🅱️ Financiar nas chaves*\n• Sem parcelas durante a obra\n• Correção INCC: + ${brl(r.accB)}\n• Saldo a financiar: *${brl(r.saldoB)}*\n\n`;
+  s+= dif>=0 ? `*✅ Resultado*\nNo antecipado você desembolsa *${brl(dif)} a menos* e ainda financia *${brl(r.accB)} a menos* no banco, o que também reduz os juros do financiamento.`
+             : `*✅ Resultado*\nFinanciando nas chaves você desembolsa *${brl(-dif)} a menos* durante a obra, mas financia *${brl(r.accB)} a mais* no banco, o que aumenta os juros do financiamento.`;
+  s+=`\n\n_Valores simulados. Não consideram os juros do financiamento bancário após as chaves._`;
+  if(cor) s+=`\n\n${cor}`;
+  copy(s,'Texto copiado');
+});
+
+function showTab(t){
+  const cli=t==='cliente';
+  $('tab-sim').hidden=cli; $('tab-cli').hidden=!cli;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(cli?'cliente':'simulador')));
+  document.body.classList.toggle('on-cli',cli);
+  if(cli) drawCli(); else { if(ch1) ch1.resize(); if(ch2) ch2.resize(); }
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{location.hash=b.dataset.tab;showTab(b.dataset.tab);window.scrollTo(0,0);}));
+window.addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
+if(document.fonts&&document.fonts.load){Promise.all(['400','500','600','700'].map(w=>document.fonts.load(w+' 20px Inter'))).then(drawCli).catch(()=>{});document.fonts.ready.then(drawCli);}
+
+// máscara simples de moeda/decimal ao sair do campo
+['valorImovel','valorFin','seguros','tarifa'].forEach(id=>$(id).addEventListener('blur',()=>{$(id).value=num(id).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}));
+document.querySelectorAll('input,select').forEach(el=>{el.addEventListener('input',calc);el.addEventListener('change',calc);});
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(ch1){ch1.destroy();ch1=null;}if(ch2){ch2.destroy();ch2=null;}drawCharts(lastRows);},250);});
+// ===== Memória dos últimos dados (localStorage, só neste navegador) =====
+const LS_KEY='simObraIncc.v1';
+const FIELDS=[...document.querySelectorAll('input[id],select[id]')].map(e=>e.id);
+const DEFAULTS={}; FIELDS.forEach(id=>DEFAULTS[id]=$(id).value);
+function setVal(id,v){const el=$(id);if(el.tagName==='SELECT'&&![...el.options].some(o=>o.value===v))return;el.value=v;}
+function saveState(){try{const o={};FIELDS.forEach(id=>o[id]=$(id).value);localStorage.setItem(LS_KEY,JSON.stringify({v:o,t:Date.now()}));}catch(e){}}
+function loadState(){try{const s=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(!s||!s.v)return false;FIELDS.forEach(id=>{if(id in s.v)setVal(id,String(s.v[id]));});if(s.t){const d=new Date(s.t);$('saveInfo').textContent='Últimos dados salvos neste aparelho em '+d.toLocaleDateString('pt-BR')+' às '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.';}return true;}catch(e){return false;}}
+let saveT;function queueSave(){clearTimeout(saveT);saveT=setTimeout(saveState,300);}
+FIELDS.forEach(id=>['input','change','blur'].forEach(ev=>$(id).addEventListener(ev,queueSave)));
+let resetArm=0;
+$('btnReset').addEventListener('click',()=>{
+  const b=$('btnReset');
+  if(Date.now()-resetArm>3000){resetArm=Date.now();b.textContent='Clique de novo para confirmar';b.classList.add('confirm');setTimeout(()=>{if(Date.now()-resetArm>=3000){b.textContent='Restaurar valores padrão';b.classList.remove('confirm');}},3100);return;}
+  resetArm=0;b.textContent='Restaurar valores padrão';b.classList.remove('confirm');
+  FIELDS.forEach(id=>setVal(id,DEFAULTS[id]));
+  try{localStorage.removeItem(LS_KEY);}catch(e){}
+  $('saveInfo').textContent='Valores padrão restaurados. Os novos dados serão salvos neste navegador.';
+  calc();toast('Valores padrão restaurados');
+});
+loadState();
+
+window.addEventListener('load',()=>{calc();syncJump();}); calc();
+if(location.hash==='#cliente') showTab('cliente');
+// ===== App instalável (funciona offline depois do 1º acesso) =====
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
+</script>
+</body>
+</html>
